@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # VirusTotal API Key
-VIRUSTOTAL_API_KEY = 'f29dcce7f711cb31495d07bc885f57303343e8e13fe6c47d869a6254392c2c2e'
+VIRUSTOTAL_API_KEY = '6521a614ec622362884db41bf42559c8826e21cfe12f9f97450f992e79000824'
 
 # Email Server Configuration
 IMAP_SERVERS = {
@@ -164,6 +164,79 @@ def check_ip_virustotal(ip):
         }
     except Exception as e:
         return {}
+    
+def malicious_history_page():
+    st.header("📜 Malicious Links & IPs History")
+
+    history = load_history()
+    if not history:
+        st.info("No malicious history found.")
+        return
+
+    # Create a list to store table data
+    table_data = []
+
+    # Iterate through history and extract relevant data
+    for record in history:
+        subject = record.get("Subject", "N/A")
+        sender = record.get("From", "N/A")
+        timestamp = record.get("timestamp", "N/A")
+        malicious_urls = record.get("URLs", [])
+        malicious_ips = record.get("IPs", [])
+
+        # Add URLs to table data
+        for url in malicious_urls:
+            table_data.append({
+                "Type": "URL",
+                "Value": url,
+                "Subject": subject,
+                "Sender": sender,
+                "Timestamp": timestamp,
+                "Status": "Malicious"
+            })
+
+        # Add IPs to table data
+        for ip in malicious_ips:
+            table_data.append({
+                "Type": "IP",
+                "Value": ip,
+                "Subject": subject,
+                "Sender": sender,
+                "Timestamp": timestamp,
+                "Status": "Malicious"
+            })
+
+    # Convert to DataFrame for better display
+    if table_data:
+        df = pd.DataFrame(table_data)
+
+        # Reorder columns for better readability
+        df = df[["Timestamp", "Sender", "Subject", "Type", "Value", "Status"]]
+
+        # Display the table with Streamlit
+        st.dataframe(
+            df,
+            column_config={
+                "Timestamp": "Timestamp",
+                "Sender": "Sender",
+                "Subject": "Subject",
+                "Type": "Type",
+                "Value": "Value",
+                "Status": "Status"
+            },
+            use_container_width=True
+        )
+
+        # Add a download button for the table
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Download Malicious History as CSV",
+            data=csv,
+            file_name="malicious_history.csv",
+            mime="text/csv"
+        )
+    else:
+        st.info("No malicious URLs or IPs detected in history.")
 
 def send_security_alert(recipient, subject, body):
     """Send security alert email using app password"""
@@ -235,6 +308,7 @@ def analyze_emails_page():
                             history.append({
                                 "Subject": email_data["Subject"],
                                 "From": email_data["From"],
+                                "Body": email_data["Body"],
                                 "URLs": malicious_urls,
                                 "IPs": malicious_ips,
                                 "URL Scan Results": {url: url_scan_results[url] for url in malicious_urls},
@@ -260,47 +334,50 @@ def analyze_emails_page():
 
                     # Display results
                     results_df = pd.DataFrame([{
+                        "DateTime": time.strftime("%Y-%m-%d %H:%M:%S"),
                         "Subject": e["Subject"],
                         "From": e["From"],
+                        "Body": e["Body"],
                         "Total URLs": len(e["URLs"]),
                         "Malicious URLs": len([u for u in e["URLs"] if url_scan_results.get(u, {}).get('malicious', 0) > 0]),
                         "Total IPs": len(e["IPs"]),
                         "Malicious IPs": len([ip for ip in e["IPs"] if ip_scan_results.get(ip, {}).get('malicious', 0) > 0])
                     } for e in emails])
-                    
-                    st.dataframe(results_df.style.highlight_max(axis=0, color='#ffcccc'))
+
+                    # Display the DataFrame without any additional styling
+                    st.dataframe(results_df)
                     
                 else:
                     st.error(f"Error: {emails}")
         else:
             st.warning("Please fill all required fields")
 
-def malicious_history_page():
-    st.header("Malicious Links & IPs History")
+# def malicious_history_page():
+#     st.header("Malicious Links & IPs History")
 
-    history = load_history()
-    if not history:
-        st.info("No malicious history found.")
-        return
+#     history = load_history()
+#     if not history:
+#         st.info("No malicious history found.")
+#         return
 
-    for i, record in enumerate(history, 1):
-        st.subheader(f"Suspicious Email {i}")
+#     for i, record in enumerate(history, 1):
+#         st.subheader(f"Suspicious Email {i}")
 
-        st.markdown("#### Suspicious Links")
-        for url in record.get('URLs', []):
-            st.write(f"- {url}: **Malicious**")
+#         st.markdown("#### Suspicious Links")
+#         for url in record.get('URLs', []):
+#             st.write(f"- {url}: **Malicious**")
 
-        st.markdown("#### Suspicious IPs")
-        for ip in record.get('IPs', []):
-            st.write(f"- {ip}: **Malicious**")
+#         st.markdown("#### Suspicious IPs")
+#         for ip in record.get('IPs', []):
+#             st.write(f"- {ip}: **Malicious**")
 
-        st.markdown("#### Scan Results")
-        st.json({
-            "URLs": record.get('URL Scan Results', {}),
-            "IPs": record.get('IP Scan Results', {})
-        })
+#         st.markdown("#### Scan Results")
+#         st.json({
+#             "URLs": record.get('URL Scan Results', {}),
+#             "IPs": record.get('IP Scan Results', {})
+#         })
 
-        st.divider()
+#         st.divider()
 
 def detailed_reports_page():
     st.header("Detailed Email Analysis Reports")
