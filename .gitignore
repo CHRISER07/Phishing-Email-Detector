@@ -12,9 +12,11 @@ env.bak/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
-# Environment variables
+# Environment variables (CRITICAL - DO NOT COMMIT)
 .env
 *.env.local
+.env.production
+.env.development
 
 # Logs and temporary files
 *.log
@@ -27,6 +29,11 @@ scan_results/
 *.json
 *.csv
 *.xlsx
+*.docx
+
+# OAuth credentials (CRITICAL - DO NOT COMMIT)
+token.json
+credentials.json
 
 # IDE or Editor-specific files
 .vscode/
@@ -36,3 +43,8 @@ scan_results/
 # System files
 .DS_Store
 Thumbs.db
+
+# Large archives
+*.zip
+*.tar.gz
+*.rar
